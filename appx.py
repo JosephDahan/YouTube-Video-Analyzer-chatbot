@@ -4,6 +4,8 @@ from youtube_transcript_api import YouTubeTranscriptApi
 import requests
 from urllib.parse import urlparse, parse_qs
 import sys
+from pytube import YouTube
+
 
 def extract_video_id(url):
     """
@@ -37,12 +39,12 @@ if st.sidebar.button('New Chat'):
 # Prompt the user to enter their API keys in the sidebar
 st.sidebar.title("API Key Configuration")
 openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
-youtube_api_key = st.sidebar.text_input("YouTube API Key", type="password")
+#youtube_api_key = st.sidebar.text_input("YouTube API Key", type="password")
 
 
 
 # Use the API keys in your app (only if they are provided)
-if openai_api_key and youtube_api_key:
+if openai_api_key:
     openai.api_key = openai_api_key
 else:
     st.sidebar.warning("Please enter your API keys to use the app.")
@@ -85,29 +87,19 @@ if not st.session_state["url_entered"]:
         if not video_id:
             st.error("Invalid YouTube URL. Please check the URL and try again.")
             sys.exit()  # Use sys.exit() instead of return
-        
-        # The following line is redundant and should be removed
-        # st.session_state["video_url"] = prompt
-        # video_id = prompt.split('v=')[-1].split('&')[0]
 
         try:
-            video_details_url = f'https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video_id}&key={youtube_api_key}'
-            response = requests.get(video_details_url)
-            video_details = response.json()
-            
-            if not video_details.get('items'):
-                raise Exception("No video details found. Please check the URL and try again.")
-            
-            video_title = video_details['items'][0]['snippet']['title']
+            yt = YouTube(prompt)
+            video_title = yt.title
+            channel_name = yt.author
             
             transcript = YouTubeTranscriptApi.get_transcript(video_id)
             full_transcript = " ".join([x['text'] for x in transcript])
 
-            st.session_state['video_details'] = video_details
+            st.session_state['video_details'] = {'items': [{'snippet': {'title': video_title, 'channelTitle': channel_name}}]}
             st.session_state['full_transcript'] = full_transcript
             st.session_state["url_entered"] = True
             st.success('Transcript fetched successfully!')
-            api_response = response.json()
         except YouTubeTranscriptApi.TranscriptsDisabled:
             st.error('Could not retrieve transcript. The video might not have transcripts enabled.')
         except YouTubeTranscriptApi.NoTranscriptFound:
@@ -182,4 +174,3 @@ else:
                 st.session_state.messages.append({"role": "assistant", "content": full_response.strip()})
             except openai.error.OpenAIError as e:
                 st.error(f'Error generating response: {str(e)}')
-
