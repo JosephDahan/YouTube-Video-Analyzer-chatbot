@@ -1,4 +1,6 @@
-streamlit
-openai
-youtube_transcript_api
-requests
+openai==0.27.0
+streamlit==0.88.0
+youtube-transcript-api==0.4.1
+requests==2.26.0
+pytube==10.9.2
+pytube==10.9.2
