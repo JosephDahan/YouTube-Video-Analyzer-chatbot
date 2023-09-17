@@ -2,11 +2,44 @@ import openai
 import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi
 import requests
+from urllib.parse import urlparse, parse_qs
+import sys
+
+def extract_video_id(url):
+    """
+    Extract the video ID from a YouTube URL.
+    """
+    # Parse the URL
+    parsed_url = urlparse(url)
+    
+    # Get the video ID from the query parameters (for URLs with "v=")
+    video_id = parse_qs(parsed_url.query).get("v")
+    if video_id:
+        return video_id[0]
+    
+    # Get the video ID from the URL path (for URLs with "youtu.be")
+    if "youtu.be" in parsed_url.netloc:
+        return parsed_url.path.split("/")[1]
+    
+    return None
+
+
+# Add a "New Chat" button in the sidebar
+if st.sidebar.button('New Chat'):
+    st.session_state["url_entered"] = False
+    st.session_state["summary_generated"] = False
+    st.session_state["video_url"] = ""
+    st.session_state["video_details"] = {}
+    st.session_state["full_transcript"] = ""
+    st.session_state.messages = []
+    st.experimental_rerun()
 
 # Prompt the user to enter their API keys in the sidebar
 st.sidebar.title("API Key Configuration")
 openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
 youtube_api_key = st.sidebar.text_input("YouTube API Key", type="password")
+
+
 
 # Use the API keys in your app (only if they are provided)
 if openai_api_key and youtube_api_key:
@@ -44,11 +77,18 @@ for message in st.session_state.messages:
 # Define a variable to hold the API response
 api_response = None
 
+
 if not st.session_state["url_entered"]:
     prompt = st.chat_input("Enter YouTube Video URL:")
     if prompt:
-        st.session_state["video_url"] = prompt
-        video_id = prompt.split('v=')[-1].split('&')[0]
+        video_id = extract_video_id(prompt)
+        if not video_id:
+            st.error("Invalid YouTube URL. Please check the URL and try again.")
+            sys.exit()  # Use sys.exit() instead of return
+        
+        # The following line is redundant and should be removed
+        # st.session_state["video_url"] = prompt
+        # video_id = prompt.split('v=')[-1].split('&')[0]
 
         try:
             video_details_url = f'https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video_id}&key={youtube_api_key}'
